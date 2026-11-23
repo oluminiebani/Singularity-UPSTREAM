@@ -27,11 +27,18 @@ jobs:
           sudo ln -sf /usr/bin/llvm-objdump-15 /usr/bin/llvm-objdump
           sudo ln -sf /usr/bin/llvm-strip-15 /usr/bin/llvm-strip
 
-      - name: Checkout Kernel Source
+      - name: Checkout Stable V17 Release
         uses: actions/checkout@v4
         with:
+          ref: V17
           submodules: recursive
           fetch-depth: 1
+
+      - name: Apply Touch Fix from plasma branch
+        run: |
+          git fetch origin plasma
+          git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/Samsung/S6SY771/sec_drivers_s6sy771.c
+          git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/touchpanel_common_driver.c
 
       - name: Build Kernel
         run: |
