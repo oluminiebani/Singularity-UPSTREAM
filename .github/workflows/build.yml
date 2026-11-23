@@ -27,16 +27,17 @@ jobs:
           sudo ln -sf /usr/bin/llvm-objdump-15 /usr/bin/llvm-objdump
           sudo ln -sf /usr/bin/llvm-strip-15 /usr/bin/llvm-strip
 
-      - name: Checkout Stable V17 Release
+      - name: Checkout Fork and Fetch V17 Tag
         uses: actions/checkout@v4
         with:
-          ref: V17
           submodules: recursive
           fetch-depth: 1
 
-      - name: Apply Touch Fix from plasma branch
+      - name: Switch to Stable V17 and Apply Touch Fix
         run: |
-          git fetch origin plasma
+          git fetch --depth=1 https://github.com refs/tags/V17:refs/tags/V17
+          git checkout -f refs/tags/V17
+          git submodule update --init --recursive
           git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/Samsung/S6SY771/sec_drivers_s6sy771.c
           git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/touchpanel_common_driver.c
 
