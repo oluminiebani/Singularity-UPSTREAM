@@ -849,39 +849,83 @@ EXPORT_SYMBOL(sec_refresh_switch);
 
 static int sec_reset(void *chip_data)
 {
-	int ret = -1;
+	int ret = 0;
+	bool was_power_down;
 	struct chip_data_s6sy771 *chip_info =
 		(struct chip_data_s6sy771 *)chip_data;
 
 	TPD_INFO("%s is called\n", __func__);
-	if (chip_info->is_power_down) { //power off state, no need reset
-		return 0;
-	}
 
-	disable_irq_nosync(chip_info->client->irq);
+	was_power_down = chip_info->is_power_down;
+	if (!was_power_down)
+		disable_irq_nosync(chip_info->client->irq);
 
-	if (gpio_is_valid(chip_info->hw_res->reset_gpio)) { //rsted by rst pin
+	if (gpio_is_valid(chip_info->hw_res->reset_gpio)) {
 		TPD_INFO("reset by pull down rst pin");
-		gpio_direction_output(chip_info->hw_res->reset_gpio, false);
+		ret = gpio_direction_output(chip_info->hw_res->reset_gpio, 0);
+		if (ret < 0)
+			goto out_irq;
+		if (was_power_down) {
+			ret = tp_powercontrol_1v8(chip_info->hw_res, true);
+			if (ret < 0)
+				goto out_irq;
+			sec_mdelay(5);
+			ret = tp_powercontrol_2v8(chip_info->hw_res, true);
+			if (ret < 0) {
+				tp_powercontrol_1v8(chip_info->hw_res, false);
+				goto out_irq;
+			}
+			sec_mdelay(10);
+			chip_info->is_power_down = false;
+		}
 		sec_mdelay(5);
-		gpio_direction_output(chip_info->hw_res->reset_gpio, true);
-	} else { //otherwise by soft reset
-		touch_i2c_write_block(chip_info->client, SEC_CMD_SOFT_RESET, 0,
-				      NULL);
+		ret = gpio_direction_output(chip_info->hw_res->reset_gpio, 1);
+		if (ret < 0)
+			goto out_irq;
+	} else {
+		if (was_power_down) {
+			ret = tp_powercontrol_1v8(chip_info->hw_res, true);
+			if (ret < 0)
+				goto out_irq;
+			sec_mdelay(5);
+			ret = tp_powercontrol_2v8(chip_info->hw_res, true);
+			if (ret < 0) {
+				tp_powercontrol_1v8(chip_info->hw_res, false);
+				goto out_irq;
+			}
+			chip_info->is_power_down = false;
+			sec_mdelay(10);
+		}
+		ret = touch_i2c_write_block(chip_info->client,
+					    SEC_CMD_SOFT_RESET, 0, NULL);
+		if (ret < 0)
+			goto out_irq;
 	}
 
 	sec_mdelay(RESET_TO_NORMAL_TIME);
-	sec_wait_for_ready(chip_info, SEC_ACK_BOOT_COMPLETE);
+	ret = sec_wait_for_ready(chip_info, SEC_ACK_BOOT_COMPLETE);
+	if (ret < 0) {
+		TPD_INFO("%s: boot-complete ACK timed out\n", __func__);
+		goto out_irq;
+	}
 	ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SENSE_ON, 0,
 				    NULL);
+	if (ret < 0)
+		TPD_INFO("%s: SENSE_ON failed: %d\n", __func__, ret);
 	TPD_INFO("%s: write sense on %s\n", __func__,
 		 (ret < 0) ? "failed" : "success");
 
-	enable_irq(chip_info->client->irq);
+	if (!was_power_down)
+		enable_irq(chip_info->client->irq);
 
 	sec_refresh_switch(chip_info->display_refresh_rate);
 
-	return 0;
+	return ret;
+
+out_irq:
+	if (!was_power_down)
+		enable_irq(chip_info->client->irq);
+	return ret;
 }
 
 static int sec_ftm_process(void *chip_data)
