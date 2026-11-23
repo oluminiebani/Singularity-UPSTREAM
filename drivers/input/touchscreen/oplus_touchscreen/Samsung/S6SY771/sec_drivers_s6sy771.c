@@ -854,77 +854,61 @@ static int sec_reset(void *chip_data)
 	struct chip_data_s6sy771 *chip_info =
 		(struct chip_data_s6sy771 *)chip_data;
 
-	TPD_INFO("%s is called\n", __func__);
+	TPD_INFO("%s is called (power_down=%d)\n", __func__, chip_info->is_power_down);
 
 	was_power_down = chip_info->is_power_down;
-	if (!was_power_down)
-		disable_irq_nosync(chip_info->client->irq);
+	if (!was_power_down) {
+		/* Avoid toggling reset_gpio on refurbished panel while powered, just re-enable sense */
+		ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SENSE_ON, 0, NULL);
+		TPD_INFO("%s: soft sense on %s\n", __func__, (ret < 0) ? "failed" : "success");
+		sec_refresh_switch(chip_info->display_refresh_rate);
+		return ret;
+	}
 
 	if (gpio_is_valid(chip_info->hw_res->reset_gpio)) {
-		TPD_INFO("reset by pull down rst pin");
 		ret = gpio_direction_output(chip_info->hw_res->reset_gpio, 0);
 		if (ret < 0)
-			goto out_irq;
-		if (was_power_down) {
-			ret = tp_powercontrol_1v8(chip_info->hw_res, true);
-			if (ret < 0)
-				goto out_irq;
-			sec_mdelay(5);
-			ret = tp_powercontrol_2v8(chip_info->hw_res, true);
-			if (ret < 0) {
-				tp_powercontrol_1v8(chip_info->hw_res, false);
-				goto out_irq;
-			}
-			sec_mdelay(10);
-			chip_info->is_power_down = false;
-		}
+			return ret;
+		ret = tp_powercontrol_1v8(chip_info->hw_res, true);
+		if (ret < 0)
+			return ret;
 		sec_mdelay(5);
+		ret = tp_powercontrol_2v8(chip_info->hw_res, true);
+		if (ret < 0) {
+			tp_powercontrol_1v8(chip_info->hw_res, false);
+			return ret;
+		}
+		sec_mdelay(15);
+		chip_info->is_power_down = false;
 		ret = gpio_direction_output(chip_info->hw_res->reset_gpio, 1);
 		if (ret < 0)
-			goto out_irq;
+			return ret;
 	} else {
-		if (was_power_down) {
-			ret = tp_powercontrol_1v8(chip_info->hw_res, true);
-			if (ret < 0)
-				goto out_irq;
-			sec_mdelay(5);
-			ret = tp_powercontrol_2v8(chip_info->hw_res, true);
-			if (ret < 0) {
-				tp_powercontrol_1v8(chip_info->hw_res, false);
-				goto out_irq;
-			}
-			chip_info->is_power_down = false;
-			sec_mdelay(10);
-		}
-		ret = touch_i2c_write_block(chip_info->client,
-					    SEC_CMD_SOFT_RESET, 0, NULL);
+		ret = tp_powercontrol_1v8(chip_info->hw_res, true);
 		if (ret < 0)
-			goto out_irq;
+			return ret;
+		sec_mdelay(5);
+		ret = tp_powercontrol_2v8(chip_info->hw_res, true);
+		if (ret < 0) {
+			tp_powercontrol_1v8(chip_info->hw_res, false);
+			return ret;
+		}
+		chip_info->is_power_down = false;
+		sec_mdelay(15);
+		ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SOFT_RESET, 0, NULL);
+		if (ret < 0)
+			return ret;
 	}
 
 	sec_mdelay(RESET_TO_NORMAL_TIME);
 	ret = sec_wait_for_ready(chip_info, SEC_ACK_BOOT_COMPLETE);
-	if (ret < 0) {
-		TPD_INFO("%s: boot-complete ACK timed out\n", __func__);
-		goto out_irq;
-	}
-	ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SENSE_ON, 0,
-				    NULL);
 	if (ret < 0)
-		TPD_INFO("%s: SENSE_ON failed: %d\n", __func__, ret);
-	TPD_INFO("%s: write sense on %s\n", __func__,
-		 (ret < 0) ? "failed" : "success");
+		TPD_INFO("%s: boot-complete ACK timed out\n", __func__);
 
-	if (!was_power_down)
-		enable_irq(chip_info->client->irq);
+	ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SENSE_ON, 0, NULL);
+	TPD_INFO("%s: write sense on %s\n", __func__, (ret < 0) ? "failed" : "success");
 
 	sec_refresh_switch(chip_info->display_refresh_rate);
-
-	return ret;
-
-out_irq:
-	if (!was_power_down)
-		enable_irq(chip_info->client->irq);
 	return ret;
 }
 
