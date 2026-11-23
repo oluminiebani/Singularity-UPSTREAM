@@ -35,7 +35,7 @@ jobs:
 
       - name: Switch to Stable V17 and Apply Touch Fix
         run: |
-          git fetch --depth=1 https://github.com refs/tags/V17:refs/tags/V17
+          git fetch --depth=1 https://github.com/The-Anomalist/Singularity.git refs/tags/V17:refs/tags/V17
           git checkout -f refs/tags/V17
           git submodule update --init --recursive
           git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/Samsung/S6SY771/sec_drivers_s6sy771.c
@@ -61,7 +61,7 @@ jobs:
 
       - name: Package AnyKernel3 Zip
         run: |
-          git clone --depth=1 https://github.com -b master AnyKernel3
+          git clone --depth=1 https://github.com/The-Anomalist/Singularity.git -b master AnyKernel3
           rm -rf AnyKernel3/.git AnyKernel3/README.md AnyKernel3/modules AnyKernel3/patch AnyKernel3/ramdisk
           cp out/arch/arm64/boot/Image.gz AnyKernel3/
           sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
