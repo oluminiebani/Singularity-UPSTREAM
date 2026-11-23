@@ -9640,6 +9640,8 @@ static void speedup_resume(struct work_struct *work)
 	}
 
 	ts->suspend_state = TP_SPEEDUP_RESUME_COMPLETE;
+	WRITE_ONCE(ts->spuri_fp_touch.lcd_resume_ok, true);
+	wake_up_interruptible(&waiter);
 
 	if (ts->lcd_wait_tp_resume_finished_support) {
 		ts->resume_finished = 1;
