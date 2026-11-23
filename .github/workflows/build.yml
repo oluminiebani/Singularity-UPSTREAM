@@ -15,10 +15,17 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h
 
-      - name: Install Dependencies
+      - name: Install Dependencies and Clang
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex git libncurses5-dev libssl-dev libxml2-utils lz4 python3 unzip zip zstd wget
+          sudo apt-get install -y bc bison build-essential ccache curl flex git libncurses5-dev libssl-dev libxml2-utils lz4 python3 unzip zip zstd wget clang-15 lld-15 llvm-15 binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi
+          sudo ln -sf /usr/bin/clang-15 /usr/bin/clang
+          sudo ln -sf /usr/bin/ld.lld-15 /usr/bin/ld.lld
+          sudo ln -sf /usr/bin/llvm-ar-15 /usr/bin/llvm-ar
+          sudo ln -sf /usr/bin/llvm-nm-15 /usr/bin/llvm-nm
+          sudo ln -sf /usr/bin/llvm-objcopy-15 /usr/bin/llvm-objcopy
+          sudo ln -sf /usr/bin/llvm-objdump-15 /usr/bin/llvm-objdump
+          sudo ln -sf /usr/bin/llvm-strip-15 /usr/bin/llvm-strip
 
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
@@ -26,20 +33,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Download ZyC Clang Toolchain
-        run: |
-          mkdir -p $HOME/clang
-          CLANG_URL=$(curl -s https://github.com | grep "browser_download_url.*tar.gz" | cut -d '"' -f 4 | head -n 1)
-          echo "Downloading: $CLANG_URL"
-          wget -q "$CLANG_URL" -O clang.tar.gz
-          tar -xzf clang.tar.gz -C $HOME/clang
-          rm -f clang.tar.gz
-
       - name: Build Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
-          export PATH="$HOME/clang/bin:$PATH"
           make O=out ARCH=arm64 vendor/kona-perf_defconfig vendor/oplus.config
           make -j$(nproc --all) O=out ARCH=arm64 \
             CC="clang" \
