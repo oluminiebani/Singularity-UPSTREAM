@@ -61,7 +61,7 @@ jobs:
 
       - name: Package AnyKernel3 Zip
         run: |
-          git clone --depth=1 https://github.com/The-Anomalist/Singularity.git -b master AnyKernel3
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git -b master AnyKernel3
           rm -rf AnyKernel3/.git AnyKernel3/README.md AnyKernel3/modules AnyKernel3/patch AnyKernel3/ramdisk
           cp out/arch/arm64/boot/Image.gz AnyKernel3/
           sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
