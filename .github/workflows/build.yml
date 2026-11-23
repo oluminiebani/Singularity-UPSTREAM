@@ -49,7 +49,7 @@ jobs:
             CLANG_TRIPLE="aarch64-linux-gnu-" \
             CROSS_COMPILE="aarch64-linux-gnu-" \
             CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
-            Image.gz dtbo.img
+            Image.gz
 
       - name: Package AnyKernel3 Zip
         run: |
