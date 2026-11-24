@@ -4351,6 +4351,12 @@ int dsi_panel_fps60_cmd_set(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("fps [%s] failed to send DSI_CMD_SET_FPS60 cmds, rc=%d\n",
 			panel->name, rc);
+#ifdef OPLUS_BUG_STABILITY
+	oplus_dimlayer_bl_enabled = 0;
+	oplus_dimlayer_bl_enable_real = 0;
+	oplus_dimlayer_bl_alpha = 0;
+#endif
+
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
