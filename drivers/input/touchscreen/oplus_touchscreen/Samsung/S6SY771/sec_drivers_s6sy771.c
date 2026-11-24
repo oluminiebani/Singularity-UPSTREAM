@@ -861,7 +861,6 @@ static int sec_reset(void *chip_data)
 		/* Avoid toggling reset_gpio on refurbished panel while powered, just re-enable sense */
 		ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SENSE_ON, 0, NULL);
 		TPD_INFO("%s: soft sense on %s\n", __func__, (ret < 0) ? "failed" : "success");
-		sec_refresh_switch(chip_info->display_refresh_rate);
 		return ret;
 	}
 
@@ -908,7 +907,6 @@ static int sec_reset(void *chip_data)
 	ret = touch_i2c_write_block(chip_info->client, SEC_CMD_SENSE_ON, 0, NULL);
 	TPD_INFO("%s: write sense on %s\n", __func__, (ret < 0) ? "failed" : "success");
 
-	sec_refresh_switch(chip_info->display_refresh_rate);
 	return ret;
 }
 
@@ -997,7 +995,6 @@ static int sec_power_control(void *chip_data, bool enable)
 		TPD_INFO("%s: write sense on %s\n", __func__,
 			 (ret < 0) ? "failed" : "success");
 		chip_info->is_power_down = false;
-		sec_refresh_switch(chip_info->display_refresh_rate);
 		enable_irq(chip_info->client->irq);
 	} else {
 		disable_irq_nosync(chip_info->client->irq);
