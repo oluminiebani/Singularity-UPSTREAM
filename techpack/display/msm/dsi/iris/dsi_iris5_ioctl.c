@@ -417,7 +417,6 @@ static int _iris_configure(u32 display, u32 type, u32 value)
 		}
 		IRIS_LOGI("%s(), switch Iris mode to: %u", __func__, value);
 		if (value == ANALOG_BYPASS_MODE) {
-			iris_panel_nits_set(0, true, value);
 			iris_quality_setting_off();
 			iris_abypass_switch_proc(pcfg->display, value, true,
 						 true);
