@@ -1005,14 +1005,22 @@ int oplus_display_panel_get_dimlayer_hbm(void *data)
 	return 0;
 }
 
-static void oplus_dimlayer_hbm_watchdog_fn(struct work_struct *work);
-static DECLARE_DELAYED_WORK(oplus_dimlayer_hbm_watchdog, oplus_dimlayer_hbm_watchdog_fn);
+static void oplus_dimlayer_hbm_cleanup_fn(struct work_struct *work);
+static DECLARE_DELAYED_WORK(oplus_dimlayer_hbm_cleanup, oplus_dimlayer_hbm_cleanup_fn);
 
-static void oplus_dimlayer_hbm_watchdog_fn(struct work_struct *work)
+static void oplus_dimlayer_hbm_cleanup_fn(struct work_struct *work)
 {
+	struct dsi_display *display = get_main_display();
+	struct drm_connector *conn = display ? display->drm_conn : NULL;
 	uint32_t zero = 0;
-	if (!oplus_onscreenfp_status && (oplus_dimlayer_hbm || oplus_dimlayer_hbm_saved)) {
-		pr_info("oplus_ofp: auto-clearing stuck dimlayer_hbm\n");
+
+	if (oplus_onscreenfp_status)
+		return;
+	if (conn && conn->state && conn->state->crtc &&
+	    sde_crtc_get_fingerprint_mode(conn->state->crtc->state))
+		return;
+	if (oplus_dimlayer_hbm || oplus_dimlayer_hbm_saved) {
+		pr_info("oplus_ofp: clearing leftover dimlayer_hbm after unlock\n");
 		oplus_display_panel_set_dimlayer_hbm(&zero);
 	}
 }
@@ -1026,11 +1034,8 @@ int oplus_display_panel_set_dimlayer_hbm(void *data)
 	int value = (*dimlayer_hbm);
 
 	value = !!value;
-	if (value) {
-		mod_delayed_work(system_wq, &oplus_dimlayer_hbm_watchdog, msecs_to_jiffies(3500));
-	} else {
-		cancel_delayed_work(&oplus_dimlayer_hbm_watchdog);
-	}
+	if (!value)
+		cancel_delayed_work(&oplus_dimlayer_hbm_cleanup);
 	if (oplus_dimlayer_hbm_saved == value)
 		return 0;
 	if (get_oplus_display_power_status() == OPLUS_DISPLAY_POWER_ON) {
@@ -1216,6 +1221,8 @@ int oplus_display_panel_notify_fp_press(void *data)
 	if (onscreenfp_status) {
 		err = drm_atomic_commit(state);
 		drm_atomic_state_put(state);
+	} else {
+		mod_delayed_work(system_wq, &oplus_dimlayer_hbm_cleanup, msecs_to_jiffies(350));
 	}
 
 #ifdef OPLUS_FEATURE_AOD_RAMLESS
