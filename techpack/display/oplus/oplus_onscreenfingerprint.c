@@ -1005,6 +1005,18 @@ int oplus_display_panel_get_dimlayer_hbm(void *data)
 	return 0;
 }
 
+static void oplus_dimlayer_hbm_watchdog_fn(struct work_struct *work);
+static DECLARE_DELAYED_WORK(oplus_dimlayer_hbm_watchdog, oplus_dimlayer_hbm_watchdog_fn);
+
+static void oplus_dimlayer_hbm_watchdog_fn(struct work_struct *work)
+{
+	uint32_t zero = 0;
+	if (!oplus_onscreenfp_status && (oplus_dimlayer_hbm || oplus_dimlayer_hbm_saved)) {
+		pr_info("oplus_ofp: auto-clearing stuck dimlayer_hbm\n");
+		oplus_display_panel_set_dimlayer_hbm(&zero);
+	}
+}
+
 int oplus_display_panel_set_dimlayer_hbm(void *data)
 {
 	struct dsi_display *display = get_main_display();
@@ -1014,10 +1026,10 @@ int oplus_display_panel_set_dimlayer_hbm(void *data)
 	int value = (*dimlayer_hbm);
 
 	value = !!value;
-	if (value && !oplus_onscreenfp_status &&
-	    get_oplus_display_power_status() == OPLUS_DISPLAY_POWER_ON) {
-		pr_info("oplus_ofp: ignore spurious dimlayer_hbm=1 while unlocked\n");
-		return 0;
+	if (value) {
+		mod_delayed_work(system_wq, &oplus_dimlayer_hbm_watchdog, msecs_to_jiffies(3500));
+	} else {
+		cancel_delayed_work(&oplus_dimlayer_hbm_watchdog);
 	}
 	if (oplus_dimlayer_hbm_saved == value)
 		return 0;
