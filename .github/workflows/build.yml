@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - plasma
+      - fix/display-refresh-bl
 
 jobs:
   build:
@@ -38,8 +39,12 @@ jobs:
           git fetch --depth=1 https://github.com/The-Anomalist/Singularity.git refs/tags/V17:refs/tags/V17
           git checkout -f refs/tags/V17
           git submodule update --init --recursive
-          git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/Samsung/S6SY771/sec_drivers_s6sy771.c
-          git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/touchpanel_common_driver.c
+          git fetch origin fix/display-refresh-bl
+          git checkout origin/fix/display-refresh-bl -- drivers/input/touchscreen/oplus_touchscreen/Samsung/S6SY771/sec_drivers_s6sy771.c
+          git checkout origin/fix/display-refresh-bl -- drivers/input/touchscreen/oplus_touchscreen/touchpanel_common_driver.c
+          git checkout origin/fix/display-refresh-bl -- techpack/display/msm/dsi/dsi_panel.c
+          git checkout origin/fix/display-refresh-bl -- techpack/display/msm/dsi/iris/dsi_iris5_timing_switch.c
+          git checkout origin/fix/display-refresh-bl -- techpack/display/msm/dsi/iris/dsi_iris5_ioctl.c
 
       - name: Build Kernel
         run: |
