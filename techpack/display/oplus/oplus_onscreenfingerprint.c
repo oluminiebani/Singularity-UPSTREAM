@@ -1019,9 +1019,6 @@ int oplus_display_panel_set_dimlayer_hbm(void *data)
 		pr_info("oplus_ofp: ignore spurious dimlayer_hbm=1 while unlocked\n");
 		return 0;
 	}
-	if (!value && oplus_hbm_on) {
-		oplus_display_panel_hbm_off();
-	}
 	if (oplus_dimlayer_hbm_saved == value)
 		return 0;
 	if (get_oplus_display_power_status() == OPLUS_DISPLAY_POWER_ON) {
