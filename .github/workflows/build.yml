@@ -45,6 +45,7 @@ jobs:
           git checkout origin/fix/display-refresh-bl -- techpack/display/msm/dsi/dsi_panel.c
           git checkout origin/fix/display-refresh-bl -- techpack/display/msm/dsi/iris/dsi_iris5_timing_switch.c
           git checkout origin/fix/display-refresh-bl -- techpack/display/msm/dsi/iris/dsi_iris5_ioctl.c
+          git checkout origin/fix/display-refresh-bl -- techpack/display/oplus/oplus_onscreenfingerprint.c
 
       - name: Build Kernel
         run: |
@@ -70,8 +71,8 @@ jobs:
           rm -rf AnyKernel3/.git AnyKernel3/README.md AnyKernel3/modules AnyKernel3/patch AnyKernel3/ramdisk
           cp out/arch/arm64/boot/Image.gz AnyKernel3/
           sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
-          sed -i 's/block=\/dev\/block\/platform\/omap\/omap_hsmmc.0\/by-name\/boot;/block=boot;/g' AnyKernel3/anykernel.sh
-          sed -i 's/is_slot_device=0;/is_slot_device=auto;/g' AnyKernel3/anykernel.sh
+          sed -i 's|BLOCK=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;|BLOCK=boot;|g' AnyKernel3/anykernel.sh
+          sed -i 's/IS_SLOT_DEVICE=0;/IS_SLOT_DEVICE=auto;/g' AnyKernel3/anykernel.sh
           cd AnyKernel3 && zip -r9 ../Singularity-OP8-TouchFix.zip *
 
       - name: Upload Kernel Artifact
