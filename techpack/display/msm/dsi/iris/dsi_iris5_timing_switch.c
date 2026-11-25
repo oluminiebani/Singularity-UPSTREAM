@@ -232,7 +232,9 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 	struct iris_cfg *pcfg = iris_get_cfg();
 	int lightup_opt = iris_lightup_opt_get();
 	u32 refresh_rate = mode_info->refresh_rate;
-	u32 switch_case = pcfg->switch_case;
+	u32 switch_case = _iris_switch_case(refresh_rate, mode_info->v_active);
+
+	pcfg->switch_case = switch_case;
 	ktime_t ktime = 0;
 
 	IRIS_LOGD("%s(%d)", __func__, __LINE__);
@@ -269,6 +271,13 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 					 false, true);
 		rc = iris_dsi_send_cmds(panel, switch_cmds->cmds,
 					switch_cmds->count, switch_cmds->state);
+	}
+
+	if (switch_case == SWITCH_ABYP_TO_PT) {
+		iris_abypass_switch_proc(pcfg->display, PASS_THROUGH_MODE,
+					 false, true);
+		rc = iris_pt_send_panel_cmd(panel, switch_cmds);
+		_iris_switch_framerate();
 	}
 
 	// Update panel timing

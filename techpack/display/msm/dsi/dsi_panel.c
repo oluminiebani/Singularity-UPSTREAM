@@ -4372,6 +4372,11 @@ int dsi_panel_fps120_cmd_set(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("fps [%s] failed to send DSI_CMD_SET_FPS120 cmds, rc=%d\n",
 			panel->name, rc);
+#ifdef OPLUS_BUG_STABILITY
+	oplus_dimlayer_bl_enabled = 0;
+	oplus_dimlayer_bl_enable_real = 0;
+	oplus_dimlayer_bl_alpha = 0;
+#endif
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -6041,6 +6046,11 @@ int dsi_panel_switch(struct dsi_panel *panel)
 	if (panel->oplus_priv.is_90fps_switch) {
 		dsi_panel_fps_change(panel);
 	}
+#ifdef OPLUS_BUG_STABILITY
+	oplus_dimlayer_bl_enabled = 0;
+	oplus_dimlayer_bl_enable_real = 0;
+	oplus_dimlayer_bl_alpha = 0;
+#endif
 #ifdef OPLUS_BUG_STABILITY
 	if (panel->oplus_priv.gamma_switch_enable)
 		gamma_switch(panel);
