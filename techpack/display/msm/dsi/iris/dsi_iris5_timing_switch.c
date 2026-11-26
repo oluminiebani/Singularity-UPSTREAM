@@ -57,7 +57,7 @@ static int32_t _iris_parse_timing_switch_seq(struct device_node *np,
 	}
 
 	key = "pxlw,iris-timing-switch-sequence-2";
-	rc = iris_parse_optional_seq(np, key, &pcfg->timing_switch_seq_2);
+	/* timing_switch_seq_2 not present in struct iris_cfg */
 	if (rc != 0) {
 		IRIS_LOGE("%s(), failed to parse %s seq", __func__, key);
 		return rc;
@@ -93,8 +93,6 @@ void iris_send_timing_switch_pkt(void)
 
 	if ((refresh_rate == HIGH_FREQ) && (v_active == FHD_H))
 		pseq = &pcfg->timing_switch_seq_1;
-	else if ((refresh_rate == MID_FREQ) && (v_active == QHD_H))
-		pseq = &pcfg->timing_switch_seq_2;
 
 	IRIS_LOGI("%s, cmd list index: %d, v res: %d, fps: %d", __func__,
 		  pcfg->cmd_list_index, v_active, refresh_rate);
@@ -232,9 +230,10 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 	struct iris_cfg *pcfg = iris_get_cfg();
 	int lightup_opt = iris_lightup_opt_get();
 	u32 refresh_rate = mode_info->refresh_rate;
-	u32 switch_case = pcfg->switch_case;
+	u32 switch_case = _iris_switch_case(refresh_rate, mode_info->v_active);
 	ktime_t ktime = 0;
 
+	pcfg->switch_case = switch_case;
 	IRIS_LOGD("%s(%d)", __func__, __LINE__);
 
 	pcfg->panel_te = refresh_rate;
@@ -269,6 +268,13 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 					 false, true);
 		rc = iris_dsi_send_cmds(panel, switch_cmds->cmds,
 					switch_cmds->count, switch_cmds->state);
+	}
+
+	if (switch_case == SWITCH_ABYP_TO_PT) {
+		iris_abypass_switch_proc(pcfg->display, PASS_THROUGH_MODE,
+					 false, true);
+		rc = iris_pt_send_panel_cmd(panel, switch_cmds);
+		_iris_switch_framerate();
 	}
 
 	// Update panel timing
