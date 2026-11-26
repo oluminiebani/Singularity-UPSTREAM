@@ -227,7 +227,14 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
-	led_pwm1[1] = (unsigned char)level;
+	int scaled_level;
+	/* FIX: Scale 0-2047 range to 0-255 for standard 8-bit DCS 0x51 command */
+	if (pinfo->bl_max > 255) {
+	    scaled_level = (level * 255) / pinfo->bl_max;
+	} else {
+	    scaled_level = level;
+	}
+	led_pwm1[1] = (unsigned char)scaled_level;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &backlight_cmd;
