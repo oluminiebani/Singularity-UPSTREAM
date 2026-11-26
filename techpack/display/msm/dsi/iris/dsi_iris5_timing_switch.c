@@ -58,6 +58,7 @@ static int32_t _iris_parse_timing_switch_seq(struct device_node *np,
 
 	key = "pxlw,iris-timing-switch-sequence-2";
 	/* timing_switch_seq_2 not present in struct iris_cfg */
+	rc = 0;
 	if (rc != 0) {
 		IRIS_LOGE("%s(), failed to parse %s seq", __func__, key);
 		return rc;
