@@ -357,6 +357,7 @@
 				qcom,mdss-dsi-v-front-porch = <8>;
 				qcom,mdss-dsi-v-pulse-width = <4>;
 				qcom,mdss-dsi-panel-framerate = <90>;
+				qcom,mdss-dsi-dfps-list = <60 90>;
 				qcom,mdss-dsi-panel-phy-timings = [
 					00 22 05 09 25 23 09 09 06 03 04 00
 				];
