@@ -189,26 +189,47 @@ int iris_post_switch(struct dsi_panel *panel,
 	int rc = 0;
 	struct iris_cfg *pcfg = iris_get_cfg();
 	int lightup_opt = iris_lightup_opt_get();
-	u32 refresh_rate = mode_info->refresh_rate;
-	u32 frame_width = mode_info->h_active;
-	u32 frame_height = mode_info->v_active;
-	u32 switch_case = _iris_switch_case(refresh_rate, frame_height);
+	u32 refresh_rate, frame_width, frame_height, switch_case;
+	u32 old_cmd_list_index, old_switch_case;
+
+	if (!panel || !mode_info || !pcfg) {
+		IRIS_LOGE("%s(), invalid args: panel=%pK mode_info=%pK cfg=%pK",
+			  __func__, panel, mode_info, pcfg);
+		return -EINVAL;
+	}
+
+	refresh_rate = mode_info->refresh_rate;
+	frame_width = mode_info->h_active;
+	frame_height = mode_info->v_active;
+	old_cmd_list_index = pcfg->cmd_list_index;
+	old_switch_case = pcfg->switch_case;
+	switch_case = _iris_switch_case(refresh_rate, frame_height);
 
 	IRIS_LOGI(
 		"%s(), post switch to %ux%u@%uHz, cmd list %u, switch case %s",
 		__func__, frame_width, frame_height, refresh_rate,
 		pcfg->cmd_list_index, switch_case_name[switch_case]);
 
-	pcfg->switch_case = switch_case;
-
-	if (switch_cmds == NULL)
+	if (!switch_cmds) {
+		pcfg->switch_case = switch_case;
 		return 0;
+	}
 
 	if (lightup_opt & 0x8) {
 		rc = iris_dsi_send_cmds(panel, switch_cmds->cmds,
 					switch_cmds->count, switch_cmds->state);
+		if (rc) {
+			IRIS_LOGE(
+				"%s(), Force ABYP post-switch failed: fps=%u case=%s rc=%d",
+				__func__, refresh_rate,
+				switch_case_name[switch_case], rc);
+			pcfg->cmd_list_index = old_cmd_list_index;
+			pcfg->switch_case = old_switch_case;
+			return rc;
+		}
 		IRIS_LOGI("%s(), post switch Force ABYP", __func__);
-		return 0;
+		pcfg->switch_case = switch_case;
+		return rc;
 	}
 
 	if (iris_get_abyp_mode(panel) == PASS_THROUGH_MODE)
@@ -220,8 +241,18 @@ int iris_post_switch(struct dsi_panel *panel,
 		rc = iris_dsi_send_cmds(panel, switch_cmds->cmds,
 					switch_cmds->count, switch_cmds->state);
 
+	if (rc) {
+		IRIS_LOGE(
+			"%s(), post-switch failed: fps=%u case=%s rc=%d",
+			__func__, refresh_rate, switch_case_name[switch_case], rc);
+		pcfg->cmd_list_index = old_cmd_list_index;
+		pcfg->switch_case = old_switch_case;
+		return rc;
+	}
+
+	pcfg->switch_case = switch_case;
 	IRIS_LOGD("%s(), return %d", __func__, rc);
-	return 0;
+	return rc;
 }
 
 int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
@@ -230,16 +261,21 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 	int rc = 0;
 	struct iris_cfg *pcfg = iris_get_cfg();
 	int lightup_opt = iris_lightup_opt_get();
-	u32 refresh_rate = mode_info->refresh_rate;
-	u32 switch_case = _iris_switch_case(refresh_rate, mode_info->v_active);
+	u32 refresh_rate, switch_case;
+	u32 old_cmd_list_index, old_switch_case;
 	ktime_t ktime = 0;
 
-	pcfg->switch_case = switch_case;
-	IRIS_LOGD("%s(%d)", __func__, __LINE__);
+	if (!panel || !switch_cmds || !mode_info || !pcfg) {
+		IRIS_LOGE("%s(), invalid args: panel=%pK cmds=%pK mode_info=%pK cfg=%pK",
+			  __func__, panel, switch_cmds, mode_info, pcfg);
+		return -EINVAL;
+	}
 
-	pcfg->panel_te = refresh_rate;
-	pcfg->ap_te = refresh_rate;
-	pcfg->next_fps_for_iris = refresh_rate;
+	refresh_rate = mode_info->refresh_rate;
+	old_cmd_list_index = pcfg->cmd_list_index;
+	old_switch_case = pcfg->switch_case;
+	switch_case = _iris_switch_case(refresh_rate, mode_info->v_active);
+	IRIS_LOGD("%s(%d)", __func__, __LINE__);
 
 	if (IRIS_IF_LOGI())
 		ktime = ktime_get();
@@ -247,6 +283,20 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 	if (lightup_opt & 0x8) {
 		rc = iris_dsi_send_cmds(panel, switch_cmds->cmds,
 					switch_cmds->count, switch_cmds->state);
+		if (rc) {
+			IRIS_LOGE(
+				"%s(), Force ABYP switch failed: fps=%u case=%s rc=%d",
+				__func__, refresh_rate,
+				switch_case_name[switch_case], rc);
+			pcfg->cmd_list_index = old_cmd_list_index;
+			pcfg->switch_case = old_switch_case;
+			return rc;
+		}
+
+		pcfg->switch_case = switch_case;
+		pcfg->panel_te = refresh_rate;
+		pcfg->ap_te = refresh_rate;
+		pcfg->next_fps_for_iris = refresh_rate;
 		IRIS_LOGI(
 			"%s(), switch between ABYP and ABYP, total cost '%d us'",
 			__func__,
@@ -261,7 +311,8 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 
 	if (switch_case == SWITCH_PT_TO_PT) {
 		rc = iris_pt_send_panel_cmd(panel, switch_cmds);
-		_iris_switch_framerate();
+		if (!rc)
+			_iris_switch_framerate();
 	}
 
 	if (switch_case == SWITCH_PT_TO_ABYP) {
@@ -275,8 +326,23 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 		iris_abypass_switch_proc(pcfg->display, PASS_THROUGH_MODE,
 					 false, true);
 		rc = iris_pt_send_panel_cmd(panel, switch_cmds);
-		_iris_switch_framerate();
+		if (!rc)
+			_iris_switch_framerate();
 	}
+
+	if (rc) {
+		IRIS_LOGE(
+			"%s(), timing switch failed: fps=%u case=%s rc=%d",
+			__func__, refresh_rate, switch_case_name[switch_case], rc);
+		pcfg->cmd_list_index = old_cmd_list_index;
+		pcfg->switch_case = old_switch_case;
+		return rc;
+	}
+
+	pcfg->switch_case = switch_case;
+	pcfg->panel_te = refresh_rate;
+	pcfg->ap_te = refresh_rate;
+	pcfg->next_fps_for_iris = refresh_rate;
 
 	// Update panel timing
 	iris_is_resolution_switched(mode_info);
@@ -284,7 +350,7 @@ int iris_switch(struct dsi_panel *panel, struct dsi_panel_cmd_set *switch_cmds,
 	IRIS_LOGI("%s(), return %d, total cost '%d us'", __func__, rc,
 		  (u32)(ktime_to_us(ktime_get()) - ktime_to_us(ktime)));
 
-	return 0;
+	return rc;
 }
 
 uint32_t iris_get_cont_type_with_timing_switch(struct dsi_panel *panel)
