@@ -8477,7 +8477,8 @@ int dsi_display_enable(struct dsi_display *display)
 		}
 	}
 #else
-	if (mode->priv_info->dsc_enabled) {
+	if (mode->priv_info->dsc_enabled &&
+	    !(mode->dsi_mode_flags & DSI_MODE_FLAG_DMS_FPS)) {
 		mode->priv_info->dsc.pic_width *= display->ctrl_count;
 		rc = dsi_panel_update_pps(display->panel);
 		if (rc) {

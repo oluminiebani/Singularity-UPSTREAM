@@ -42,6 +42,8 @@ jobs:
           git checkout origin/plasma -- drivers/input/touchscreen/oplus_touchscreen/touchpanel_common_driver.c
           git checkout origin/plasma -- techpack/display/msm/dsi/iris/dsi_iris5_timing_switch.c
           git checkout origin/plasma -- arch/arm64/boot/dts/vendor/oplus/instantnoodle/dsi-panel-oplus19101samsung-amb655uv01-1080-2400-90fps.dtsi
+          git checkout origin/plasma -- techpack/display/msm/dsi/dsi_panel.c
+          git checkout origin/plasma -- techpack/display/msm/dsi/dsi_display.c
 
       - name: Build Kernel
         run: |

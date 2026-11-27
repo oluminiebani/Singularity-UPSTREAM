@@ -5986,15 +5986,18 @@ int dsi_panel_fps_change(struct dsi_panel *panel)
 	    panel->cur_mode->timing.refresh_rate == 120) {
 		if (fps_tmp == 90) {
 			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_FPS_CHANGE);
-			if (rc)
+			if (rc) {
 				DSI_ERR("[%s] failed to send DSI_CMD_FPS_CHANGE cmds, rc=%d\n",
 					panel->name, rc);
+				return rc;
+			}
 		}
 	} else if (panel->cur_mode->timing.refresh_rate == 90) {
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_FPS_CHANGE);
 		if (rc) {
 			DSI_ERR("[%s] failed to send DSI_CMD_FPS_CHANGE cmds, rc=%d\n",
 				panel->name, rc);
+			return rc;
 		}
 	}
 	fps_tmp = panel->cur_mode->timing.refresh_rate;
@@ -6038,8 +6041,11 @@ int dsi_panel_switch(struct dsi_panel *panel)
 			 panel->cur_mode->priv_info ?
 			 panel->cur_mode->priv_info->mdp_transfer_time_us : 0);
 
-	if (panel->oplus_priv.is_90fps_switch) {
-		dsi_panel_fps_change(panel);
+	if (!rc && panel->oplus_priv.is_90fps_switch) {
+		rc = dsi_panel_fps_change(panel);
+		if (rc)
+			DSI_ERR("[%s] fps change failed after timing switch, rc=%d\n",
+				panel->name, rc);
 	}
 #ifdef OPLUS_BUG_STABILITY
 	if (panel->oplus_priv.gamma_switch_enable)
