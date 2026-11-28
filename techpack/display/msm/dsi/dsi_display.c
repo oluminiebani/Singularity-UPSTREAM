@@ -8530,8 +8530,6 @@ int dsi_display_enable(struct dsi_display *display)
 error_disable_panel:
 	(void)dsi_panel_disable(display->panel);
 error:
-	if (!rc)
-
 	mutex_unlock(&display->display_lock);
 
 #ifdef OPLUS_FEATURE_ADFR
